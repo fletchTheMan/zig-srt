@@ -5,10 +5,15 @@ const c = @cImport({
     @cInclude("srt/srt.h");
 });
 
-const bufSize: i32 = 1316;
+const buf_size: i32 = 1316;
 
 pub fn main() !void {
-    const stdin = std.io.getStdIn(); if (c.srt_startup() == -1) {
+
+    var stdin_buffer: [buf_size]u8 = undefined;
+    var stdin_file = std.fs.File.stdin().reader(&stdin_buffer);
+    const stdin: *std.io.Reader = &stdin_file.interface;
+   
+    if (c.srt_startup() == -1) {
         @panic("Failed to startup srt\n");
     }
     defer _ = c.srt_cleanup();
@@ -34,19 +39,18 @@ pub fn main() !void {
         var sock_size: i32 = @sizeOf(std.c.sockaddr);
         const client = c.srt_accept(srt_sock, @as(*c.struct_sockaddr, @ptrCast(&sock_bind)), &sock_size);
 
-        var bufet: [bufSize]u8 = undefined;
         std.debug.print("Input: ", .{});
-        var len = try stdin.read(&bufet);
-        while(len != 0){
-            const bufLength  = c.strnlen(&bufet, @as(c_int, bufSize));
-            const ret = c.srt_sendmsg(client, &bufet, @as(c_int, bufLength), -1, 0) ;
+        var buf: []u8 = try stdin.takeDelimiterInclusive('\n');
+        buf[buf.len - 1] = 0;
+        while(buf.len != 0){
+            const ret = c.srt_sendmsg(client, @ptrCast(&buf), @intCast(buf.len), -1, 0) ;
             if (ret == -1) {
-                std.debug.print("failed to send message with error {s}\n", .{c.srt_getlasterror_str()});
+               std.debug.print("failed to send message with error {s}\n", .{c.srt_getlasterror_str()});
             } else {
-                std.debug.print("sent message", .{});
+               std.debug.print("sent message\n", .{});
             }
             std.debug.print("Input: ", .{});
-            len = try stdin.read(&bufet);
+            buf = try stdin.takeDelimiterInclusive('\n');
 
         }
     }

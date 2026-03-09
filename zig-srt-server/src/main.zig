@@ -27,15 +27,26 @@ pub fn main() !void {
     
 
     var bufet: [bufSize]u8 = undefined;
-    var ret = c.srt_recvmsg(in_sock, &bufet, bufSize);
+    var ret = c.srt_recv(in_sock, &bufet, bufSize);
     while(ret != 0){
          if (ret == -1) {
              std.debug.print("Failed to recieve message with error {s}\n", .{c.srt_getlasterror_str()});
          } else {
             std.debug.print("message recieved with NO errors\nMessage: {s}\n", .{bufet});
+            //print_message(&bufet);
          }
          ret = c.srt_recvmsg(in_sock, &bufet, bufSize);
     } 
    
 }
 
+
+fn print_message(buffer: []u8) void{
+    for(0..buffer.len) |i| {
+        if(buffer[i] == 0){
+            std.debug.print("end of string\n", .{});
+        } else {
+            std.debug.print("{c}", .{buffer[i]});
+        }
+    }
+}
